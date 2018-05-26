@@ -1,0 +1,242 @@
+<%- partial('../sidebar') %>
+
+<div id='content'>
+  <div class='panel'>
+    <div class='header'>
+      <ul class='breadcrumb'>
+        <li><a href='/'>主页</a><span class='divider'>/</span></li>
+        <li class='active'>设置</li>
+      </ul>
+    </div>
+    <div class='inner'>
+      <% if(typeof(error) !== 'undefined' && error){ %>
+      <div class="alert alert-error">
+        <a class="close" data-dismiss="alert" href="#">&times;</a>
+        <strong><%= error %></strong>
+      </div>
+      <% } %>
+      <% if (typeof(success) !== 'undefined' && success) { %>
+      <div class="alert alert-success">
+        <strong><%= success %></strong>
+      </div>
+      <% } %>
+      <form id='setting_form' class='form-horizontal' action='/setting' method='post'>
+        <div class='control-group'>
+          <label class='control-label' for='name'>用户名</label>
+
+          <div class='controls'>
+            <input class='input-xlarge readonly' id='name' name='name' size='30' type='text' readonly='true'
+                   value="<%= loginname %>"/>
+          </div>
+        </div>
+        <div class='control-group'>
+          <label class='control-label' for='email'>电子邮件</label>
+
+          <div class='controls'>
+            <input class='input-xlarge readonly' id='email' name='email' size='30' type='text'
+                   readonly='true' value="<%= email %>"/>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class='control-label' for='avatar'>头像</label>
+          <div class="controls input-xlarge">
+            <div id="avatar" class="file-item thumbnail">
+              <img src="<%= proxy(current_user.avatar_url) %>" />
+              <div class="info"></div>
+            </div>
+            <p>建议头像尺寸为48px*48px, 大小不超过100KB。</p>
+            <div id="filePicker">选择头像</div>
+          </div>
+        </div>
+        <div class='control-group'>
+          <label class='control-label' for='url'>个人网站</label>
+
+          <div class='controls'>
+            <input class='input-xlarge' id='url' name='url' size='30' type='text' value="<%= typeof(url) !== 'undefined' ? url : '' %>"/>
+          </div>
+        </div>
+        <div class='control-group'>
+          <label class='control-label' for='location'>所在地点</label>
+
+          <div class='controls'>
+            <input class='input-xlarge' id='location' name='location' size='30' type='text'
+                   value="<%= typeof(location) !== 'undefined' ? location : '' %>"/>
+          </div>
+        </div>
+
+        <div class='control-group'>
+          <label class='control-label' for='weibo'>微博</label>
+
+          <div class='controls'>
+            <input class='input-xlarge' id='weibo' name='weibo' size='30' type='text' value="<%= typeof(weibo) !== 'undefined' ? weibo : '' %>"
+                   placeholder="e.g. http://weibo.com/cnodejs"/>
+          </div>
+        </div>
+        <div class='control-group'>
+          <label class='control-label' for='github'>GitHub</label>
+
+          <div class='controls'>
+            <input class='input-xlarge' id='github' name='github' size='30' type='text'
+                   value="<%= typeof(githubUsername) !== 'undefined' ? '@' + githubUsername : '' %>" placeholder="@username" readonly="readonly" />
+            <p>请通过 GitHub 登陆 CNode 来修改此处</p>
+          </div>
+        </div>
+        <div class='control-group'>
+          <label class='control-label' for='signature'>个性签名</label>
+
+          <div class='controls'>
+            <textarea class='input-xlarge' id='signature' name='signature' size='30'><%= typeof(signature) !== 'undefined' ? signature : "" %></textarea>
+          </div>
+        </div>
+        <input type='hidden' id='action' name='action' value='change_setting'/>
+        <input type='hidden' name='_csrf' value='<%= csrf %>'/>
+
+        <div class='form-actions'>
+          <input type='submit' class='span-primary submit_btn' data-loading-text="保存中.." value='保存设置'/>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+
+  <div class='panel' style="display: none">
+    <div class='header'>
+      <span class='col_fade'>Access Token</span>
+    </div>
+    <div class='inner'>
+      <div>
+        <span>字符串：</span>
+        <%- accessToken %>
+      </div>
+      <div>
+        <span>二维码：</span>
+        <span id="access-token-qrcode"></span>
+      </div>
+    </div>
+  </div> 
+</div>
+
+
+ <!-- ejs loader 加载webuploader有问题 -->
+<script src="/public/libs/webuploader/webuploader.withoutimage.js" type="text/javascript" charset="utf-8" ></script>
+
+
+<script type="text/javascript">
+  // qrcode generate
+  var accessToken = "<%- accessToken %>";
+  new QRCode(document.getElementById("access-token-qrcode"), {
+    text: accessToken,
+    width: 200,
+    height: 200,
+  });
+  // END qrcode generate
+
+var _csrf = $('[name=_csrf]').val();
+  // 初始化Web Uploader
+var uploader = WebUploader.create({
+
+    // 选完文件后，是否自动上传。
+    auto: true,
+
+    // swf文件路径
+    swf: '/public/libs/webuploader/Uploader.swf',
+
+    // 文件接收服务端。
+    server: '/avatars?_csrf=' + _csrf,
+
+    // 选择文件的按钮。可选。
+    // 内部根据当前运行是创建，可能是input元素，也可能是flash.
+    pick: '#filePicker',
+
+    fileSingleSizeLimit: 2 * 100 * 1024, //文件要求小于200KB
+    // 只允许选择图片文件。
+    accept: {
+        title: 'Images',
+        extensions: 'gif,jpg,jpeg,bmp,png',
+        mimeTypes: 'image/*'
+    }
+});
+
+// 当有文件添加进来的时候
+uploader.on( 'fileQueued', function( file ) {
+  var $avatar = $('#avatar');
+    // 优化retina, 在retina下这个值是2
+  var ratio = window.devicePixelRatio || 1;
+  var thumbnailWidth = 100 * ratio,
+      thumbnailHeight = 100 * ratio;
+
+  var  $avatar, $image;
+  if(!$avatar.hasClass('thumbnail')){
+    $avatar.addClass('file-item thumbnail')
+    $avatar.append("<img>");
+    $avatar.append('<div class="info"></div>');
+  }
+
+  $img = $avatar.find('img');
+  $info = $avatar.find('.info');
+  $info.text(file.name);
+
+  // 创建缩略图
+  // 如果为非图片文件，可以不用调用此方法。
+  // thumbnailWidth x thumbnailHeight 为 100 x 100
+  uploader.makeThumb( file, function( error, src ) {
+      if ( error ) {
+          $img.replaceWith('<span>不能预览</span>');
+          return;
+      }
+
+      $img.attr( 'src', src );
+  }, thumbnailWidth, thumbnailHeight );
+});
+// 文件上传过程中创建进度条实时显示。
+uploader.on( 'uploadProgress', function( file, percentage ) {
+    var $li = $( '#avatar' ),
+        $percent = $li.find('.progress span');
+
+    // 避免重复创建
+    if ( !$percent.length ) {
+        $percent = $('<p class="progress"><span></span></p>')
+                .appendTo( $li )
+                .find('span');
+    }
+
+    $percent.css( 'width', percentage * 100 + '%' );
+});
+
+// 文件上传失败，显示上传出错。
+uploader.on( 'uploadError', function( file ) {
+    var $li = $( '#avatar'),
+        $error = $li.find('div.error');
+
+    // 避免重复创建
+    if ( !$error.length ) {
+        $error = $('<div class="error"></div>').appendTo( $li );
+    }
+
+    $error.text('上传失败');
+});
+
+
+// 完成上传完了，成功或者失败，先删除进度条。
+uploader.on( 'uploadComplete', function( file ) {
+    $( '#avatar').find('.progress').remove();
+});
+
+uploader.on('error', function(type){
+    switch(type){
+        case 'Q_EXCEED_SIZE_LIMIT':
+        case 'F_EXCEED_SIZE':
+            alert('文件太大了, 不能超过200KB。');
+            break;
+        case 'Q_TYPE_DENIED':
+            alert('只能上传图片。');
+            break;
+        case 'F_DUPLICATE':
+            alert('请勿重复提交。');
+            break;
+        default:
+            alert('发生未知错误。');
+    }
+});
+</script>
